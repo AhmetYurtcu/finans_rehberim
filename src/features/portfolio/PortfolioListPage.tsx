@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import { listHoldingsWithMetrics } from '../../db/repositories/portfolio'
@@ -8,10 +8,25 @@ import { Card, EmptyState } from '../../components/Card'
 import { CurrencyText } from '../../components/CurrencyText'
 import { formatNumber } from '../../lib/formatCurrency'
 import { HoldingForm } from './HoldingForm'
+import { refreshHoldingPrice } from './useLivePriceRefresh'
 
 export function PortfolioListPage() {
   const [showForm, setShowForm] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const holdings = useLiveQuery(() => listHoldingsWithMetrics(), [])
+  const refreshedIds = useRef(new Set<string>())
+
+  const idsKey = holdings?.map((h) => h.id).join(',') ?? ''
+
+  useEffect(() => {
+    const toRefresh = (holdings ?? []).filter((h) => !refreshedIds.current.has(h.id))
+    if (toRefresh.length === 0) return
+    toRefresh.forEach((h) => refreshedIds.current.add(h.id))
+
+    setRefreshing(true)
+    Promise.allSettled(toRefresh.map((h) => refreshHoldingPrice(h))).finally(() => setRefreshing(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsKey])
 
   const totals = useMemo(() => {
     const value = (holdings ?? []).reduce((s, h) => s + h.value, 0)
@@ -22,6 +37,8 @@ export function PortfolioListPage() {
   return (
     <div>
       <PageHeader title="Portföy" action={<Button onClick={() => setShowForm(true)}>+ Ekle</Button>} />
+
+      {refreshing && <p className="px-4 pb-2 text-xs text-slate-500">Fiyatlar güncelleniyor…</p>}
 
       <div className="grid grid-cols-2 gap-2 px-4">
         <Card className="text-center">

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate, useParams } from 'react-router-dom'
 import dayjs from 'dayjs'
@@ -20,6 +20,7 @@ import { HoldingForm } from './HoldingForm'
 import { LotForm } from './LotForm'
 import { PriceUpdateForm } from './PriceUpdateForm'
 import { PriceSparkline } from './PriceSparkline'
+import { useLivePriceRefresh } from './useLivePriceRefresh'
 
 export function HoldingDetailPage() {
   const { id = '' } = useParams()
@@ -31,6 +32,12 @@ export function HoldingDetailPage() {
   const holding = useLiveQuery(() => getHolding(id), [id])
   const lots = useLiveQuery(() => listLots(id), [id]) ?? []
   const snapshots = useLiveQuery(() => listPriceSnapshots(id), [id]) ?? []
+  const { status: fetchStatus, error: fetchError, refresh } = useLivePriceRefresh()
+
+  useEffect(() => {
+    if (holding) refresh(holding)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holding?.id])
 
   if (!holding) {
     return (
@@ -87,7 +94,9 @@ export function HoldingDetailPage() {
             </div>
             <div>
               <p className="text-xs text-slate-500">Güncel Fiyat</p>
-              <p className="text-sm font-medium text-slate-100">{price !== null ? fmtNum(price) : '—'}</p>
+              <p className="text-sm font-medium text-slate-100">
+                {fetchStatus === 'loading' ? '…' : price !== null ? fmtNum(price) : '—'}
+              </p>
             </div>
             <div>
               <p className="text-xs text-slate-500">Değer</p>
@@ -113,6 +122,22 @@ export function HoldingDetailPage() {
           )}
 
           {holding.note && <p className="mt-3 text-xs text-slate-500">Not: {holding.note}</p>}
+
+          <div className="mt-3 flex items-center justify-between">
+            <p className="text-xs text-slate-500">
+              {fetchStatus === 'loading' && 'Fiyat çekiliyor…'}
+              {fetchStatus === 'success' && 'Fiyat az önce güncellendi.'}
+              {fetchStatus === 'error' && <span className="text-rose-400">{fetchError} Elle girebilirsin.</span>}
+              {fetchStatus === 'idle' && ' '}
+            </p>
+            <button
+              onClick={() => refresh(holding, { force: true })}
+              disabled={fetchStatus === 'loading'}
+              className="text-xs text-emerald-400 disabled:opacity-50"
+            >
+              ↻ Şimdi Çek
+            </button>
+          </div>
 
           <div className="mt-3 flex gap-2">
             <Button variant="secondary" onClick={() => setShowEditForm(true)}>

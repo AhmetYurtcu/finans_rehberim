@@ -10,7 +10,28 @@ Kişisel gelir/gider, borç ve portföy (fon/hisse) takibi için, tamamen kendi 
 - **Portföy** — TEFAS fonları ve BIST hisseleri için alım/satım kaydı, elle fiyat güncelleme, otomatik kâr/zarar hesabı
 - **Ayarlar** — kategori yönetimi, JSON yedekle/geri yükle
 
-> Otomatik fiyat çekme (TEFAS/BIST) ve Claude tabanlı analiz/öneri özellikleri bu fazda **yok** — sonraki bir fazda eklenecek.
+- **Canlı Fiyat Çekme** — bir fon/hisse eklediğinde güncel fiyat ve kâr/zarar otomatik çekilir (bkz. aşağıdaki bölüm).
+
+> Claude tabanlı analiz/öneri özellikleri bu fazda **yok** — sonraki bir fazda eklenecek.
+
+## Canlı Fiyat Çekme Nasıl Çalışıyor
+
+Portföy sayfasını veya bir varlığın detayını açtığında, uygulama arka planda küçük bir **Cloudflare Worker** (`worker/` klasörü) üzerinden TEFAS (fonlar) ve Yahoo Finance (BIST hisseleri, `.IS` uzantısıyla) API'lerine istek atar ve güncel fiyatı otomatik kaydeder. "↻ Şimdi Çek" butonuyla elle de tetikleyebilirsin.
+
+- Worker **hiçbir veri saklamaz** — sadece gönderdiğin fon/hisse **kodunu** alıp güncel fiyatı döndürür; tutar/adet/maliyet gibi kişisel finansal bilgilerin hiçbiri bu servise gitmez.
+- Her ikisi de **resmi olmayan (unofficial) API'ler** — TEFAS ve Yahoo Finance bunları değiştirebilir/kısıtlayabilir. Böyle bir durumda otomatik çekme başarısız olur ama uygulama çökmez; her zaman **elle fiyat girme** (mevcut "+ Fiyat" formu) yedek olarak çalışır.
+- TEFAS fonları için sırasıyla YAT/EMK/BYF/GYF/GSYF fon tipleri denenir (yatırım fonu, emeklilik fonu, borsa yatırım fonu vb.).
+
+**Worker'ı yeniden deploy etmek gerekirse** (kod değişti veya URL'i taşımak istiyorsan):
+
+```bash
+cd worker
+npm install
+npx wrangler login    # ilk seferde, ücretsiz Cloudflare hesabınla
+npx wrangler deploy
+```
+
+Deploy sonrası verilen `https://....workers.dev` adresini `src/lib/priceApi.ts` içindeki `PRICE_PROXY_URL` ile güncelle.
 
 ## Geliştirme
 

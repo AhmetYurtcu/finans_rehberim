@@ -97,6 +97,27 @@ export function deletePriceSnapshot(id: string): Promise<void> {
   return db.priceSnapshots.delete(id)
 }
 
+/**
+ * Aynı gün için zaten bir fiyat kaydı varsa günceller, yoksa yeni ekler.
+ * Otomatik çekme her sayfa açılışında/yenilemede tekrar tekrar çağrıldığında
+ * aynı gün için kayıt çoğalmasını önler.
+ */
+export async function upsertPriceSnapshot(input: { holdingId: string; date: string; price: number }): Promise<void> {
+  await db.transaction('rw', db.priceSnapshots, async () => {
+    const existing = await db.priceSnapshots
+      .where('holdingId')
+      .equals(input.holdingId)
+      .filter((s) => s.date === input.date)
+      .first()
+
+    if (existing) {
+      await db.priceSnapshots.update(existing.id, { price: input.price })
+    } else {
+      await db.priceSnapshots.add({ id: createId(), ...input, createdAt: nowISO() })
+    }
+  })
+}
+
 export interface HoldingWithMetrics extends Holding {
   quantity: number
   avgCost: number

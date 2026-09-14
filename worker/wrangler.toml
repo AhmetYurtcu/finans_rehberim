@@ -1,0 +1,6 @@
+name = "finans-rehberim-price-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[observability]
+enabled = true
