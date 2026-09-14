@@ -3,18 +3,27 @@ import { db } from '../db/db'
 
 // Yedek dosyasının şekli — geri yüklerken bu şemayla doğrulanır,
 // bozuk/yanlış bir dosyanın veritabanını kirletmesi önlenir.
+//
+// İleriye/geriye dönük uyumluluk kasıtlı: her tablo `.optional().default([])` —
+// böylece ileride yeni bir tablo/özellik eklendiğinde:
+//   - ESKİ bir yedek YENİ uygulamada geri yüklenebilir (yeni tablo boş başlar,
+//     reddedilmez),
+//   - YENİ bir yedek ESKİ bir uygulama sürümünde açılırsa (zod nesneleri
+//     bilmediği ek alanları sessizce yok sayar) çökmez.
+// `version` de sabit `1` değil, herhangi bir pozitif tam sayı kabul eder —
+// tabloları tek tek eklemek/genişletmek bu numarayı artırmayı gerektirmez.
 const backupSchema = z.object({
-  version: z.literal(1),
+  version: z.number().int().positive(),
   exportedAt: z.string(),
   data: z.object({
-    settings: z.array(z.record(z.string(), z.unknown())),
-    categories: z.array(z.record(z.string(), z.unknown())),
-    transactions: z.array(z.record(z.string(), z.unknown())),
-    debts: z.array(z.record(z.string(), z.unknown())),
-    debtPayments: z.array(z.record(z.string(), z.unknown())),
-    holdings: z.array(z.record(z.string(), z.unknown())),
-    holdingLots: z.array(z.record(z.string(), z.unknown())),
-    priceSnapshots: z.array(z.record(z.string(), z.unknown())),
+    settings: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+    categories: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+    transactions: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+    debts: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+    debtPayments: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+    holdings: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+    holdingLots: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+    priceSnapshots: z.array(z.record(z.string(), z.unknown())).optional().default([]),
   }),
 })
 
@@ -95,14 +104,14 @@ export async function restoreBackup(backup: BackupFile): Promise<void> {
       ])
 
       await Promise.all([
-        db.settings.bulkAdd(backup.data.settings as never[]),
-        db.categories.bulkAdd(backup.data.categories as never[]),
-        db.transactions.bulkAdd(backup.data.transactions as never[]),
-        db.debts.bulkAdd(backup.data.debts as never[]),
-        db.debtPayments.bulkAdd(backup.data.debtPayments as never[]),
-        db.holdings.bulkAdd(backup.data.holdings as never[]),
-        db.holdingLots.bulkAdd(backup.data.holdingLots as never[]),
-        db.priceSnapshots.bulkAdd(backup.data.priceSnapshots as never[]),
+        db.settings.bulkAdd((backup.data.settings ?? []) as never[]),
+        db.categories.bulkAdd((backup.data.categories ?? []) as never[]),
+        db.transactions.bulkAdd((backup.data.transactions ?? []) as never[]),
+        db.debts.bulkAdd((backup.data.debts ?? []) as never[]),
+        db.debtPayments.bulkAdd((backup.data.debtPayments ?? []) as never[]),
+        db.holdings.bulkAdd((backup.data.holdings ?? []) as never[]),
+        db.holdingLots.bulkAdd((backup.data.holdingLots ?? []) as never[]),
+        db.priceSnapshots.bulkAdd((backup.data.priceSnapshots ?? []) as never[]),
       ])
     },
   )

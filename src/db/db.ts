@@ -10,6 +10,11 @@ import type {
   Transaction,
 } from '../types/models'
 
+// NOT: Yeni bir tablo eklersen (yeni versiyon: this.version(2).stores({...}))
+// src/lib/backup.ts'teki backupSchema + exportBackup + restoreBackup'ı da güncelle
+// (yeni tabloyu ekle). Şema orada `.optional().default([])` kullandığı için
+// eski yedekler yine sorunsuz geri yüklenir; sen sadece yeni tabloyu 4 yere
+// (interface, export listesi, zod şeması, import/clear listesi) eklemen yeterli.
 export class FinansDB extends Dexie {
   settings!: EntityTable<Settings, 'id'>
   categories!: EntityTable<Category, 'id'>
